@@ -7,8 +7,11 @@ import java.util.Calendar;
 
 public class agent {
 
+	private static String year, week_of_year, month, day;
 	
 	public static void main(String[] args) throws Exception{
+		//calcola le informazione delle variabili globali year, week_of_year, month, day
+		dateOfYesterday();
 		
 		//Mi restituisce il resultser contentnete le informazioni giornaliere orarie dei sensori interpellati.
 		//Si connette al database di UTC
@@ -62,28 +65,32 @@ public class agent {
 		Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");	
 		Connection conn = DriverManager.getConnection("jdbc:sqlserver://213.82.16.77:1433;user=readdata;password=Dat1Traff!co;database=dbMonzaNEW");
 		
-		//Set calendario
-	    Calendar cal = Calendar.getInstance();
-	    cal.add(Calendar.DATE, -1); //-1 per prendere le informazioni della giornata di ieri
-	    //cal.setMinimalDaysInFirstWeek(1);
-	    
-	    //get info calendatio
-	    int year = cal.get(Calendar.YEAR);
-	    String week_of_year = String.format("%02d", cal.get(Calendar.WEEK_OF_YEAR));
-	    String month = String.format("%02d", cal.get(Calendar.MONTH) + 1); //i mesi li conta da 0
-	    String day = String.format("%02d", cal.get(Calendar.DAY_OF_MONTH));
+		
 	    
 	    //creo il nome della tabella corrispondete alla settimana di ieri
 		String tableName = "dbo.H_DTP_DetectorPools"+year+week_of_year;
 		
 		//prendo la query composta con le informazioni prese dal calendatio
 		String query = getQuery(tableName, year, month, day);
+		
 		Statement sta = conn.createStatement();
 		ResultSet rs = sta.executeQuery(query);
 		return rs;
 	}
 	
-	public static String getQuery(String tableName, int year, String month, String day){
+	public static int getWeekOfYear(int day_of_year){
+		//funzione che dato il giorno dell'anno mi restituisce la settimana dell'anno.
+		//il giorno 01/01/**** fa partire il conteggio della "settimana dell'anno"
+		int week_of_year;
+		if(day_of_year % 7 == 0){ //il giorno dell'anno divisibile per 7 è l'ultimo giorno della settimana appena contata, non della successiva
+			week_of_year = (day_of_year/7);
+		}else{
+			week_of_year = (day_of_year/7) + 1;
+		}
+		return week_of_year;
+	}
+	
+	public static String getQuery(String tableName, String year, String month, String day){
 		return "SELECT "
 				+ "ows_id id_sens, "
 				+ "SUM(DTP_Growing_Counter) CNT, "
@@ -111,4 +118,15 @@ public class agent {
 				+ "datepart(hour,Timestamp) ";
 	}
 	
+	public static void dateOfYesterday(){
+		//Set calendario
+	    Calendar cal = Calendar.getInstance();
+	    cal.add(Calendar.DATE, -1); //-1 per prendere le informazioni della giornata di ieri
+	    
+	    //get info calendario
+	    year = ""+cal.get(Calendar.YEAR);
+	    week_of_year = String.format("%02d", getWeekOfYear(cal.get(Calendar.DAY_OF_YEAR)));
+	    month = String.format("%02d", cal.get(Calendar.MONTH) + 1); //i mesi li conta da 0
+	    day = String.format("%02d", cal.get(Calendar.DAY_OF_MONTH));
+	}
 }
